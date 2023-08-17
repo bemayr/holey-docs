@@ -19,6 +19,9 @@ dependencies:
   react:
     specifier: ^17.0.2
     version: 17.0.2
+  react-decision-tree-flow:
+    specifier: ^2.1.0
+    version: 2.1.0(react@17.0.2)
   react-dom:
     specifier: ^17.0.2
     version: 17.0.2(react@17.0.2)
@@ -6772,6 +6775,15 @@ packages:
       lodash.curry: 4.1.1
       lodash.flow: 3.5.0
       pure-color: 1.3.0
+    dev: false
+
+  /react-decision-tree-flow@2.1.0(react@17.0.2):
+    resolution: {integrity: sha512-LuMj5/O1vKxfpbRcw5mI1iSL4eIxxxJf1eDa4ZJbjkduiLGYqaM5KB0r8zNQ8uZl8DA1MtXj9RDT2gXtn5w61A==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      react: '>=16'
+    dependencies:
+      react: 17.0.2
     dev: false
 
   /react-dev-utils@12.0.1(typescript@4.7.4)(webpack@5.88.2):
