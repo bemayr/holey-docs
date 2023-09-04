@@ -10,32 +10,32 @@ type FeatureItem = {
 
 const FeatureList: FeatureItem[] = [
   {
-    title: 'Easy to Use',
-    Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
+    title: 'Find TODO-Comments',
+    Svg: require('@site/static/img/holey-todo.svg').default,
     description: (
       <>
-        Docusaurus was designed from the ground up to be easily installed and
-        used to get your website up and running quickly.
+        Holey's core idea is to replace TODO-comments with executable counterparts.
+        This lifts comments into compilation space and prevents them from rotting away.
       </>
     ),
   },
   {
-    title: 'Focus on What Matters',
-    Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
+    title: 'Introduce Holes',
+    Svg: require('@site/static/img/holey-holes.svg').default,
     description: (
       <>
-        Docusaurus lets you focus on your docs, and we&apos;ll do the chores. Go
-        ahead and move your docs into the <code>docs</code> directory.
+        <code>Hole.&lt;Type&gt;(description[, effect | value])</code> enables
+        you to write incomplete code that is still executable.
       </>
     ),
   },
   {
-    title: 'Powered by React',
-    Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
+    title: 'Extend Holey',
+    Svg: require('@site/static/img/holey-extension.svg').default,
     description: (
       <>
-        Extend or customize your website layout by reusing React. Docusaurus can
-        be extended while reusing the same header and footer.
+        An extension system allows you to extend Holey and use its Devtool.
+        This means that you can treat I/O as dummy data during development and focus on the important parts.
       </>
     ),
   },

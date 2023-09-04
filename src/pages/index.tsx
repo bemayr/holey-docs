@@ -15,11 +15,13 @@ function HomepageHeader() {
         <h1 className="hero__title">{siteConfig.title}</h1>
         <p className="hero__subtitle">{siteConfig.tagline}</p>
         <div className={styles.buttons}>
-          <Link
+          <a
+            target="_blank"
             className="button button--secondary button--lg"
-            to="/docs/intro">
-            Docusaurus Tutorial - 5min ⏱️
-          </Link>
+            href="/files/muc23-414.pdf"
+            download="10.18420/muc2023-mci-src-414.pdf">
+            Download the MuC'23 Paper
+          </a>
         </div>
       </div>
     </header>
@@ -30,8 +32,8 @@ export default function Home(): JSX.Element {
   const {siteConfig} = useDocusaurusContext();
   return (
     <Layout
-      title={`Hello from ${siteConfig.title}`}
-      description="Description will go into a meta tag in <head />">
+      title={"Overview"}
+      description="Holey is a hole-driven library for C#">
       <HomepageHeader />
       <main>
         <HomepageFeatures />
