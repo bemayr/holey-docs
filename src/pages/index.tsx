@@ -20,7 +20,7 @@ function HomepageHeader() {
             className="button button--secondary button--lg"
             href="/files/muc23-414.pdf"
             download="10.18420/muc2023-mci-src-414.pdf">
-            Download the MuC'23 Student Research Paper
+            Download the MuC'23 SRC Paper
           </a>
         </div>
       </div>
