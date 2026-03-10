@@ -1,0 +1,229 @@
+---
+import { codeToHtml } from 'shiki'
+
+interface Step {
+  description: string
+  code: string
+  lang?: string
+}
+
+interface Props {
+  steps: Step[]
+}
+
+const { steps } = Astro.props
+
+function changedLines(before: string, after: string): Set<number> {
+  const a = before.split('\n')
+  const b = after.split('\n')
+  const changed = new Set<number>()
+  const max = Math.max(a.length, b.length)
+  for (let i = 0; i < max; i++) {
+    if (a[i] !== b[i] && i < b.length) changed.add(i + 1)
+  }
+  return changed
+}
+
+const rendered = await Promise.all(
+  steps.map(async (step, i) => {
+    const diff = i > 0 ? changedLines(steps[i - 1].code, step.code) : new Set<number>()
+    const html = await codeToHtml(step.code, {
+      lang: step.lang ?? 'typescript',
+      themes: { light: 'github-light', dark: 'github-dark' },
+      transformers: [
+        {
+          line(node, line) {
+            if (diff.has(line)) this.addClassToHast(node, 'sc-changed')
+          },
+        },
+      ],
+    })
+    return { description: step.description, html }
+  })
+)
+
+const uid = `sc-${Math.random().toString(36).slice(2, 9)}`
+---
+
+<div class="scrollycoding" id={uid}>
+  <div class="sc-steps">
+    {
+      rendered.map((step, i) => (
+        <div class="sc-step" data-i={i}>
+          <div class="sc-text" set:html={step.description} />
+        </div>
+      ))
+    }
+    <div class="sc-end-spacer"></div>
+  </div>
+  <div class="sc-panel">
+    {
+      rendered.map((step, i) => (
+        <div class="sc-code" data-i={i}>
+          <Fragment set:html={step.html} />
+        </div>
+      ))
+    }
+  </div>
+</div>
+
+<script is:inline define:vars={{ uid }}>
+  ;(() => {
+    const root = document.getElementById(uid)
+    if (!root) return
+
+    const steps = [...root.querySelectorAll('.sc-step')]
+    const codes = [...root.querySelectorAll('.sc-code')]
+    let activeIndex = -1
+
+    function updateActive() {
+      const mid = window.innerHeight / 2
+      let best = 0
+      let bestDist = Infinity
+      steps.forEach((step, i) => {
+        const rect = step.getBoundingClientRect()
+        const dist = Math.abs((rect.top + rect.bottom) / 2 - mid)
+        if (dist < bestDist) {
+          bestDist = dist
+          best = i
+        }
+      })
+      if (best === activeIndex) return
+      activeIndex = best
+      codes.forEach((c, j) => c.classList.toggle('active', j === best))
+      steps.forEach((s, j) => s.classList.toggle('active', j === best))
+    }
+
+    let ticking = false
+    window.addEventListener(
+      'scroll',
+      () => {
+        if (ticking) return
+        ticking = true
+        requestAnimationFrame(() => {
+          updateActive()
+          ticking = false
+        })
+      },
+      { passive: true }
+    )
+
+    updateActive()
+  })()
+</script>
+
+<style>
+  .scrollycoding {
+    display: grid;
+    grid-template-columns: 2fr 3fr;
+    gap: 3rem;
+    align-items: start;
+    margin-block: 2rem;
+  }
+
+  .sc-steps {
+    /* prevent grid blowout */
+    min-width: 0;
+    padding-inline-end: 0.5rem;
+  }
+
+  .sc-step {
+    min-height: 70vh;
+    display: flex;
+    align-items: center;
+    padding-block: 3rem;
+    padding-inline-start: 1.5rem;
+    border-inline-start: 2px solid var(--sl-color-gray-5);
+    transition: border-color 0.3s;
+  }
+
+  .sc-step.active {
+    border-inline-start-color: var(--sl-color-accent);
+  }
+
+  .sc-text {
+    font-size: 1.05rem;
+    line-height: 1.7;
+  }
+
+  .sc-text :global(p) {
+    margin-block: 0.6rem;
+  }
+
+  .sc-text :global(p:first-child) {
+    margin-block-start: 0;
+  }
+
+  .sc-text :global(p:last-child) {
+    margin-block-end: 0;
+  }
+
+  .sc-end-spacer {
+    height: 40vh;
+  }
+
+  .sc-panel {
+    /* prevent grid blowout */
+    min-width: 0;
+    position: sticky;
+    top: calc(var(--sl-nav-height, 3.5rem) + 1rem);
+    display: grid;
+    overflow: hidden;
+  }
+
+  /* Stack all code blocks in the same grid cell, fade between them */
+  .sc-code {
+    grid-area: 1 / 1;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+    min-width: 0;
+  }
+
+  .sc-code.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .sc-code :global(pre) {
+    border-radius: 0.5rem;
+    padding: 1rem 1.5rem;
+    margin: 0;
+    overflow-x: auto;
+  }
+
+  .sc-code :global(code) {
+    counter-reset: line-number;
+    /* Suppress the \n text nodes Shiki places between .line spans.
+       Inside <pre>, white-space:pre turns those newlines into forced line
+       breaks even when the parent has line-height:0. Switching to
+       white-space:normal collapses them; .line restores pre behaviour. */
+    white-space: normal;
+  }
+
+  .sc-code :global(.line) {
+    display: block;
+    line-height: 1.6;
+    white-space: pre; /* restore code formatting inside each line */
+  }
+
+  .sc-code :global(.line)::before {
+    counter-increment: line-number;
+    content: counter(line-number);
+    display: inline-block;
+    width: 1.5rem;
+    margin-inline-end: 1.25rem;
+    text-align: right;
+    color: var(--sl-color-gray-4);
+    user-select: none;
+    font-size: 0.85em;
+  }
+
+  /* Highlight changed lines */
+  .sc-code :global(.sc-changed) {
+    background-color: color-mix(in srgb, var(--sl-color-accent) 12%, transparent);
+    margin-inline: -1.5rem;
+    padding-inline: 1.5rem;
+    border-inline-start: 3px solid var(--sl-color-accent);
+  }
+</style>
