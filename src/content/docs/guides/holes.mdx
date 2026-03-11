@@ -16,6 +16,9 @@ When a function isn't implemented yet, a common pattern is to throw an error as 
     code: `export function deleteUser(_id: string): Promise<void> {
 \tthrow new Error("delete user");
 }`,
+    diagnostics: [
+      { line: 2, severity: 'error', message: 'Crashes at runtime — intent is implicit' },
+    ],
   },
   {
     description: `<p>Replace <code>throw new Error()</code> with <code>hole()</code>.</p><p>The gap is now explicit, named, and trackable — same runtime behavior, clearer intent.</p>`,

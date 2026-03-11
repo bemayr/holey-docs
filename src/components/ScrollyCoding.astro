@@ -1,10 +1,17 @@
 ---
 import { codeToHtml } from 'shiki'
 
+interface Diagnostic {
+  line: number
+  severity: 'error' | 'warning' | 'info'
+  message: string
+}
+
 interface Step {
   description: string
   code: string
   lang?: string
+  diagnostics?: Diagnostic[]
 }
 
 interface Props {
@@ -24,9 +31,12 @@ function changedLines(before: string, after: string): Set<number> {
   return changed
 }
 
+const SEVERITY_ICON = { error: '✕', warning: '⚠', info: 'ℹ' } as const
+
 const rendered = await Promise.all(
   steps.map(async (step, i) => {
     const diff = i > 0 ? changedLines(steps[i - 1].code, step.code) : new Set<number>()
+    const diagMap = new Map((step.diagnostics ?? []).map((d) => [d.line, d]))
     const html = await codeToHtml(step.code, {
       lang: step.lang ?? 'typescript',
       themes: { light: 'github-light', dark: 'github-dark' },
@@ -34,11 +44,24 @@ const rendered = await Promise.all(
         {
           line(node, line) {
             if (diff.has(line)) this.addClassToHast(node, 'sc-changed')
+            const diag = diagMap.get(line)
+            if (diag) {
+              this.addClassToHast(node, `sc-diag-${diag.severity}`)
+              // Wrap code tokens in a span so text-decoration: underline wavy
+              // only applies to the code content, not the ::before line number
+              const wrapped = {
+                type: 'element' as const,
+                tagName: 'span',
+                properties: { class: 'sc-diag-content' },
+                children: node.children,
+              }
+              node.children = [wrapped]
+            }
           },
         },
       ],
     })
-    return { description: step.description, html }
+    return { description: step.description, html, diagnostics: step.diagnostics ?? [] }
   })
 )
 
@@ -61,6 +84,18 @@ const uid = `sc-${Math.random().toString(36).slice(2, 9)}`
       rendered.map((step, i) => (
         <div class="sc-code" data-i={i}>
           <Fragment set:html={step.html} />
+          {step.diagnostics.length > 0 && (
+            <div class="sc-diag-panel">
+              {step.diagnostics.map((d) => (
+                <div class={`sc-diag-item sc-diag-${d.severity}`}>
+                  <span class="sc-diag-icon" aria-label={d.severity}>
+                    {SEVERITY_ICON[d.severity]}
+                  </span>
+                  <span class="sc-diag-text">{d.message}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       ))
     }
@@ -122,7 +157,6 @@ const uid = `sc-${Math.random().toString(36).slice(2, 9)}`
   }
 
   .sc-steps {
-    /* prevent grid blowout */
     min-width: 0;
     padding-inline-end: 0.5rem;
   }
@@ -163,7 +197,6 @@ const uid = `sc-${Math.random().toString(36).slice(2, 9)}`
   }
 
   .sc-panel {
-    /* prevent grid blowout */
     min-width: 0;
     position: sticky;
     top: calc(var(--sl-nav-height, 3.5rem) + 1rem);
@@ -185,6 +218,11 @@ const uid = `sc-${Math.random().toString(36).slice(2, 9)}`
     pointer-events: auto;
   }
 
+  /* Square off the bottom corners when a diagnostic panel follows */
+  .sc-code :global(pre:has(+ .sc-diag-panel)) {
+    border-radius: 0.5rem 0.5rem 0 0;
+  }
+
   .sc-code :global(pre) {
     border-radius: 0.5rem;
     padding: 1rem 1.5rem;
@@ -204,7 +242,7 @@ const uid = `sc-${Math.random().toString(36).slice(2, 9)}`
   .sc-code :global(.line) {
     display: block;
     line-height: 1.6;
-    white-space: pre; /* restore code formatting inside each line */
+    white-space: pre;
   }
 
   .sc-code :global(.line)::before {
@@ -219,11 +257,72 @@ const uid = `sc-${Math.random().toString(36).slice(2, 9)}`
     font-size: 0.85em;
   }
 
-  /* Highlight changed lines */
+  /* Changed lines */
   .sc-code :global(.sc-changed) {
     background-color: color-mix(in srgb, var(--sl-color-accent) 12%, transparent);
     margin-inline: -1.5rem;
-    padding-inline: 1.5rem;
+    padding-inline-start: calc(1.5rem - 3px);
+    padding-inline-end: 1.5rem;
     border-inline-start: 3px solid var(--sl-color-accent);
+  }
+
+  /* Diagnostic severity colours */
+  .sc-code :global(.sc-diag-error)   { --sc-diag-color: #e5534b; }
+  .sc-code :global(.sc-diag-warning) { --sc-diag-color: #d29922; }
+  .sc-code :global(.sc-diag-info)    { --sc-diag-color: #58a6ff; }
+
+  /* Diagnostic line: full-width tint + left border */
+  .sc-code :global(.sc-diag-error),
+  .sc-code :global(.sc-diag-warning),
+  .sc-code :global(.sc-diag-info) {
+    background-color: color-mix(in srgb, var(--sc-diag-color) 8%, transparent);
+    margin-inline: -1.5rem;
+    padding-inline-start: calc(1.5rem - 3px);
+    padding-inline-end: 1.5rem;
+    border-inline-start: 3px solid var(--sc-diag-color);
+  }
+
+  /* Gutter: colour the line number */
+  .sc-code :global(.sc-diag-error)::before,
+  .sc-code :global(.sc-diag-warning)::before,
+  .sc-code :global(.sc-diag-info)::before {
+    color: var(--sc-diag-color);
+  }
+
+  /* Squiggly underline only on the code tokens, not the line number */
+  .sc-code :global(.sc-diag-content) {
+    text-decoration: underline wavy var(--sc-diag-color);
+    text-underline-offset: 3px;
+  }
+
+  /* ── Diagnostic panel ── */
+  .sc-code :global(.sc-diag-panel) {
+    border: 1px solid var(--sl-color-gray-5);
+    border-top: none;
+    border-radius: 0 0 0.5rem 0.5rem;
+    overflow: hidden;
+  }
+
+  .sc-code :global(.sc-diag-item) {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.825rem;
+    font-family: var(--sl-font, sans-serif);
+    line-height: 1.5;
+    background-color: color-mix(in srgb, var(--sc-diag-color) 6%, var(--sl-color-bg, #fff));
+    border-inline-start: 3px solid var(--sc-diag-color);
+  }
+
+  .sc-code :global(.sc-diag-icon) {
+    flex-shrink: 0;
+    font-size: 0.75em;
+    font-weight: 700;
+    color: var(--sc-diag-color);
+  }
+
+  .sc-code :global(.sc-diag-text) {
+    color: var(--sl-color-text);
   }
 </style>
