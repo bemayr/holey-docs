@@ -1,0 +1,262 @@
+---
+import { codeToHtml } from 'shiki'
+
+interface Props {
+  code: string
+  lang?: string
+  filename?: string
+  showCopyButton?: boolean
+  showLineNumbers?: boolean
+}
+
+const {
+  code,
+  lang = 'typescript',
+  filename,
+  showCopyButton = true,
+  showLineNumbers = true,
+} = Astro.props
+
+// Annotation transformer — strip [!code ...] comments and apply CSS classes
+const ANNOTATION_RE = /\s*\/\/\s*\[!code\s+([\w+-]+)\]\s*$/
+const lineAnnotations = new Map<number, string>()
+let hasFocus = false
+
+const cleanedLines = code.split('\n').map((line, i) => {
+  const match = line.match(ANNOTATION_RE)
+  if (match) {
+    const ann = match[1]
+    lineAnnotations.set(i + 1, ann)
+    if (ann === 'focus') hasFocus = true
+    return line.replace(ANNOTATION_RE, '')
+  }
+  return line
+})
+const cleanedCode = cleanedLines.join('\n')
+
+const CLASS_MAP: Record<string, string> = {
+  highlight: 'cb-highlight',
+  '++': 'cb-diff-add',
+  'diff-add': 'cb-diff-add',
+  '--': 'cb-diff-remove',
+  'diff-remove': 'cb-diff-remove',
+  focus: 'cb-focus',
+  error: 'cb-diag-error',
+  warning: 'cb-diag-warning',
+  info: 'cb-diag-info',
+}
+
+const html = await codeToHtml(cleanedCode, {
+  lang,
+  themes: { light: 'github-light', dark: 'github-dark' },
+  transformers: [
+    {
+      line(node, lineNum) {
+        const ann = lineAnnotations.get(lineNum)
+        if (ann) {
+          const cls = CLASS_MAP[ann]
+          if (cls) this.addClassToHast(node, cls)
+        }
+      },
+      code(node) {
+        if (hasFocus) this.addClassToHast(node, 'cb-has-focus')
+      },
+    },
+  ],
+})
+
+const uid = `cb-${Math.random().toString(36).slice(2, 9)}`
+---
+
+<div class:list={['codeblock', { 'has-line-numbers': showLineNumbers }]} id={uid}>
+  {filename && (
+    <div class="cb-header">
+      <span class="cb-filename">{filename}</span>
+      {showCopyButton && (
+        <button class="cb-copy" aria-label="Copy code" data-code={cleanedCode}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+        </button>
+      )}
+    </div>
+  )}
+  <div class="cb-panel">
+    <Fragment set:html={html} />
+    {showCopyButton && !filename && (
+      <button class="cb-copy cb-copy-floating" aria-label="Copy code" data-code={cleanedCode}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>
+      </button>
+    )}
+  </div>
+</div>
+
+<script>
+  function initCopyButtons() {
+    document.querySelectorAll<HTMLButtonElement>('.cb-copy').forEach((btn) => {
+      // Avoid double-binding
+      if (btn.dataset.bound) return
+      btn.dataset.bound = '1'
+      btn.addEventListener('click', async () => {
+        const code = btn.dataset.code ?? ''
+        try {
+          await navigator.clipboard.writeText(code)
+          btn.setAttribute('aria-label', 'Copied!')
+          setTimeout(() => btn.setAttribute('aria-label', 'Copy code'), 2000)
+        } catch {
+          // clipboard API unavailable (e.g. non-https)
+        }
+      })
+    })
+  }
+
+  initCopyButtons()
+  document.addEventListener('astro:page-load', initCopyButtons)
+</script>
+
+<style>
+  .codeblock {
+    border-radius: 0.5rem;
+    overflow: hidden;
+    border: 1px solid var(--sl-color-hairline);
+    margin-block: 1.5rem;
+  }
+
+  .cb-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 1rem;
+    background: color-mix(in srgb, var(--sl-color-gray-6, var(--sl-color-gray-5)) 60%, var(--sl-color-bg));
+    border-bottom: 1px solid var(--sl-color-hairline);
+  }
+
+  .cb-filename {
+    font-size: 0.8rem;
+    font-family: var(--sl-font-mono, monospace);
+    color: var(--sl-color-gray-3);
+  }
+
+  .cb-copy {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 0.25rem;
+    padding: 0.25rem;
+    cursor: pointer;
+    color: var(--sl-color-gray-3);
+    transition: color 0.15s, border-color 0.15s;
+    line-height: 1;
+  }
+
+  .cb-copy:hover {
+    color: var(--sl-color-text);
+    border-color: var(--sl-color-accent);
+  }
+
+  .cb-panel {
+    position: relative;
+  }
+
+  .cb-copy-floating {
+    position: absolute;
+    top: 0.6rem;
+    inset-inline-end: 0.75rem;
+    /* slightly more opaque bg so it's visible over code */
+    background: color-mix(in srgb, var(--sl-color-bg) 80%, transparent);
+  }
+
+  /* ── Code base styles ── */
+  .codeblock :global(pre) {
+    border-radius: 0;
+    padding: 1rem 1.5rem;
+    margin: 0;
+    overflow-x: auto;
+  }
+
+  /* When no header, restore border-radius on pre */
+  .codeblock:not(:has(.cb-header)) :global(pre) {
+    border-radius: 0.5rem;
+  }
+
+  .codeblock :global(code) {
+    white-space: normal;
+  }
+
+  .codeblock :global(.line) {
+    display: block;
+    line-height: 1.6;
+    white-space: pre;
+  }
+
+  /* Line numbers */
+  .codeblock.has-line-numbers :global(code) {
+    counter-reset: line-number;
+  }
+
+  .codeblock.has-line-numbers :global(.line)::before {
+    counter-increment: line-number;
+    content: counter(line-number);
+    display: inline-block;
+    width: 1.5rem;
+    margin-inline-end: 1.25rem;
+    text-align: right;
+    color: var(--sl-color-gray-4);
+    user-select: none;
+    font-size: 0.85em;
+  }
+
+  /* ── Annotations ── */
+
+  /* Highlight */
+  .codeblock :global(.cb-highlight) {
+    background: color-mix(in srgb, var(--sl-color-accent) 10%, transparent);
+    margin-inline: -1.5rem;
+    padding-inline: 1.5rem;
+  }
+
+  /* Diff add */
+  .codeblock :global(.cb-diff-add) {
+    background: color-mix(in srgb, #3fb950 12%, transparent);
+    margin-inline: -1.5rem;
+    padding-inline-start: calc(1.5rem - 3px);
+    padding-inline-end: 1.5rem;
+    border-inline-start: 3px solid #3fb950;
+  }
+
+  /* Diff remove */
+  .codeblock :global(.cb-diff-remove) {
+    background: color-mix(in srgb, #f85149 12%, transparent);
+    margin-inline: -1.5rem;
+    padding-inline-start: calc(1.5rem - 3px);
+    padding-inline-end: 1.5rem;
+    border-inline-start: 3px solid #f85149;
+  }
+
+  /* Focus — dim everything else when at least one line is focused */
+  .codeblock :global(.cb-has-focus .line:not(.cb-focus)) {
+    opacity: 0.35;
+    transition: opacity 0.15s;
+  }
+
+  /* Diagnostic severity colours */
+  .codeblock :global(.cb-diag-error)   { --cb-diag-color: #e5534b; }
+  .codeblock :global(.cb-diag-warning) { --cb-diag-color: #d29922; }
+  .codeblock :global(.cb-diag-info)    { --cb-diag-color: #58a6ff; }
+
+  .codeblock :global(.cb-diag-error),
+  .codeblock :global(.cb-diag-warning),
+  .codeblock :global(.cb-diag-info) {
+    background-color: color-mix(in srgb, var(--cb-diag-color) 8%, transparent);
+    margin-inline: -1.5rem;
+    padding-inline-start: calc(1.5rem - 3px);
+    padding-inline-end: 1.5rem;
+    border-inline-start: 3px solid var(--cb-diag-color);
+  }
+</style>

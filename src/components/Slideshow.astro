@@ -1,0 +1,382 @@
+---
+import { changedLines, renderStep, SEVERITY_ICON } from './code-utils'
+import type { Diagnostic, Step } from './code-utils'
+
+interface Props {
+  steps: Step[]
+  indicatorStyle?: 'dots' | 'counter'
+}
+
+const { steps, indicatorStyle = 'counter' } = Astro.props
+
+const rendered = await Promise.all(
+  steps.map(async (step, i) => {
+    const diff = i > 0 ? changedLines(steps[i - 1].code, step.code) : new Set<number>()
+    const { html } = await renderStep(
+      step.code,
+      step.lang ?? 'typescript',
+      step.diagnostics ?? [],
+      diff
+    )
+    return {
+      description: step.description,
+      html,
+      diagnostics: step.diagnostics ?? [],
+    }
+  })
+)
+
+const total = rendered.length
+const uid = `ss-${Math.random().toString(36).slice(2, 9)}`
+---
+
+<div class="slideshow" id={uid}>
+  <!-- Code panels (stacked, fade between) -->
+  <div class="ss-code-area">
+    {
+      rendered.map((step, i) => (
+        <div class:list={['ss-code', { active: i === 0 }]} data-i={i}>
+          <Fragment set:html={step.html} />
+          {step.diagnostics.length > 0 && (
+            <div class="sc-diag-panel">
+              {step.diagnostics.map((d: Diagnostic) => (
+                <div class={`sc-diag-item sc-diag-${d.severity}`}>
+                  <span class="sc-diag-icon" aria-label={d.severity}>
+                    {SEVERITY_ICON[d.severity]}
+                  </span>
+                  <span class="sc-diag-text">{d.message}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))
+    }
+  </div>
+
+  <!-- Navigation controls -->
+  <div class="ss-controls">
+    <button class="ss-btn" data-action="prev" disabled aria-label="Previous step">
+      ← Prev
+    </button>
+
+    {
+      indicatorStyle === 'dots' ? (
+        <div class="ss-dots" role="tablist" aria-label="Steps">
+          {rendered.map((_, i) => (
+            <button
+              class:list={['ss-dot', { active: i === 0 }]}
+              data-i={i}
+              role="tab"
+              aria-selected={i === 0 ? 'true' : 'false'}
+              aria-label={`Step ${i + 1}`}
+            />
+          ))}
+        </div>
+      ) : (
+        <span class="ss-counter" aria-live="polite" aria-atomic="true">
+          1 / {total}
+        </span>
+      )
+    }
+
+    <button class:list={['ss-btn', { disabled: total <= 1 }]} data-action="next" disabled={total <= 1} aria-label="Next step">
+      Next →
+    </button>
+  </div>
+
+  <!-- Description panels (stacked, fade between) -->
+  <div class="ss-texts">
+    {
+      rendered.map((step, i) => (
+        <div class:list={['ss-text', { active: i === 0 }]} data-i={i}>
+          <div class="ss-text-inner" set:html={step.description} />
+        </div>
+      ))
+    }
+  </div>
+</div>
+
+<script is:inline define:vars={{ uid, total }}>
+  ;(() => {
+    function init() {
+      const root = document.getElementById(uid)
+      if (!root) return
+
+      const codes = [...root.querySelectorAll('.ss-code')]
+      const texts = [...root.querySelectorAll('.ss-text')]
+      const dots = [...root.querySelectorAll('.ss-dot')]
+      const counter = root.querySelector('.ss-counter')
+      const prevBtn = root.querySelector('[data-action="prev"]')
+      const nextBtn = root.querySelector('[data-action="next"]')
+      let current = 0
+
+      function go(index) {
+        current = Math.max(0, Math.min(index, total - 1))
+
+        codes.forEach((c, i) => c.classList.toggle('active', i === current))
+        texts.forEach((t, i) => t.classList.toggle('active', i === current))
+
+        dots.forEach((d, i) => {
+          d.classList.toggle('active', i === current)
+          d.setAttribute('aria-selected', String(i === current))
+        })
+
+        if (counter) counter.textContent = `${current + 1} / ${total}`
+
+        if (prevBtn) prevBtn.disabled = current === 0
+        if (nextBtn) nextBtn.disabled = current === total - 1
+      }
+
+      prevBtn?.addEventListener('click', () => go(current - 1))
+      nextBtn?.addEventListener('click', () => go(current + 1))
+
+      dots.forEach((dot, i) => {
+        dot.addEventListener('click', () => go(i))
+      })
+
+      // Keyboard navigation scoped to component — events bubble up from focused children
+      root.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') { e.preventDefault(); go(current - 1) }
+        if (e.key === 'ArrowRight') { e.preventDefault(); go(current + 1) }
+      })
+
+      go(0)
+    }
+
+    init()
+    document.addEventListener('astro:page-load', init)
+  })()
+</script>
+
+<style>
+  .slideshow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-block: 2rem;
+  }
+
+  /* ── Code area ── */
+  .ss-code-area {
+    display: grid;
+    overflow: hidden;
+    border-radius: 0.5rem 0.5rem 0 0;
+  }
+
+  .ss-code {
+    grid-area: 1 / 1;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+    min-width: 0;
+  }
+
+  .ss-code.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Square off bottom corners when a diagnostic panel follows */
+  .ss-code :global(pre:has(+ .sc-diag-panel)) {
+    border-radius: 0;
+  }
+
+  .ss-code :global(pre) {
+    border-radius: 0;
+    padding: 1rem 1.5rem;
+    margin: 0;
+    overflow-x: auto;
+  }
+
+  .ss-code :global(code) {
+    counter-reset: line-number;
+    white-space: normal;
+  }
+
+  .ss-code :global(.line) {
+    display: block;
+    line-height: 1.6;
+    white-space: pre;
+  }
+
+  .ss-code :global(.line)::before {
+    counter-increment: line-number;
+    content: counter(line-number);
+    display: inline-block;
+    width: 1.5rem;
+    margin-inline-end: 1.25rem;
+    text-align: right;
+    color: var(--sl-color-gray-4);
+    user-select: none;
+    font-size: 0.85em;
+  }
+
+  /* Changed lines */
+  .ss-code :global(.sc-changed) {
+    background-color: color-mix(in srgb, var(--sl-color-accent) 12%, transparent);
+    margin-inline: -1.5rem;
+    padding-inline-start: calc(1.5rem - 3px);
+    padding-inline-end: 1.5rem;
+    border-inline-start: 3px solid var(--sl-color-accent);
+  }
+
+  /* Diagnostic severity colours */
+  .ss-code :global(.sc-diag-error)   { --sc-diag-color: #e5534b; }
+  .ss-code :global(.sc-diag-warning) { --sc-diag-color: #d29922; }
+  .ss-code :global(.sc-diag-info)    { --sc-diag-color: #58a6ff; }
+
+  .ss-code :global(.sc-diag-error),
+  .ss-code :global(.sc-diag-warning),
+  .ss-code :global(.sc-diag-info) {
+    background-color: color-mix(in srgb, var(--sc-diag-color) 8%, transparent);
+    margin-inline: -1.5rem;
+    padding-inline-start: calc(1.5rem - 3px);
+    padding-inline-end: 1.5rem;
+    border-inline-start: 3px solid var(--sc-diag-color);
+  }
+
+  .ss-code :global(.sc-diag-error)::before,
+  .ss-code :global(.sc-diag-warning)::before,
+  .ss-code :global(.sc-diag-info)::before {
+    color: var(--sc-diag-color);
+  }
+
+  .ss-code :global(.sc-diag-content) {
+    text-decoration: underline wavy var(--sc-diag-color);
+    text-underline-offset: 3px;
+  }
+
+  /* ── Diagnostic panel ── */
+  .ss-code :global(.sc-diag-panel) {
+    border: 1px solid var(--sl-color-gray-5);
+    border-top: none;
+    overflow: hidden;
+  }
+
+  .ss-code :global(.sc-diag-item) {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.825rem;
+    font-family: var(--sl-font, sans-serif);
+    line-height: 1.5;
+    background-color: color-mix(in srgb, var(--sc-diag-color) 6%, var(--sl-color-bg, #fff));
+    border-inline-start: 3px solid var(--sc-diag-color);
+  }
+
+  .ss-code :global(.sc-diag-icon) {
+    flex-shrink: 0;
+    font-size: 0.75em;
+    font-weight: 700;
+    color: var(--sc-diag-color);
+  }
+
+  .ss-code :global(.sc-diag-text) {
+    color: var(--sl-color-text);
+  }
+
+  /* ── Controls bar ── */
+  .ss-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.625rem 1rem;
+    border: 1px solid var(--sl-color-hairline);
+    border-top: none;
+    background: color-mix(in srgb, var(--sl-color-gray-6, var(--sl-color-gray-5)) 40%, var(--sl-color-bg));
+  }
+
+  .ss-btn {
+    background: var(--sl-color-bg);
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 0.375rem;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.825rem;
+    cursor: pointer;
+    color: var(--sl-color-text);
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .ss-btn:hover:not(:disabled) {
+    border-color: var(--sl-color-accent);
+    color: var(--sl-color-accent);
+  }
+
+  .ss-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  /* Counter */
+  .ss-counter {
+    font-size: var(--sl-text-sm, 0.875rem);
+    color: var(--sl-color-gray-3);
+    min-width: 4rem;
+    text-align: center;
+  }
+
+  /* Dots */
+  .ss-dots {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  .ss-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    border: none;
+    background: var(--sl-color-gray-5);
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.15s, transform 0.15s;
+  }
+
+  .ss-dot.active {
+    background: var(--sl-color-accent);
+    transform: scale(1.25);
+  }
+
+  /* ── Description area ── */
+  .ss-texts {
+    display: grid;
+    border: 1px solid var(--sl-color-hairline);
+    border-top: none;
+    border-radius: 0 0 0.5rem 0.5rem;
+    overflow: hidden;
+  }
+
+  .ss-text {
+    grid-area: 1 / 1;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+  }
+
+  .ss-text.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .ss-text-inner {
+    padding: 1rem 1.25rem;
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--sl-color-text);
+  }
+
+  .ss-text-inner :global(p) {
+    margin-block: 0.6rem;
+  }
+
+  .ss-text-inner :global(p:first-child) {
+    margin-block-start: 0;
+  }
+
+  .ss-text-inner :global(p:last-child) {
+    margin-block-end: 0;
+  }
+</style>
