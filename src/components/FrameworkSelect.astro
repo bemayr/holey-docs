@@ -1,0 +1,68 @@
+---
+const frameworks = [
+  { id: 'typescript', label: 'TypeScript' },
+  { id: 'csharp', label: 'C# / .NET' },
+]
+---
+<div class="framework-select-wrapper">
+  <label for="framework-select" class="framework-select-label">Library</label>
+  <select id="framework-select" class="framework-select">
+    {frameworks.map(fw => (
+      <option value={fw.id}>{fw.label}</option>
+    ))}
+  </select>
+</div>
+
+<script>
+  function applyFramework(value: string) {
+    document.documentElement.dataset.framework = value
+    localStorage.setItem('holey-framework', value)
+    const select = document.getElementById('framework-select') as HTMLSelectElement | null
+    if (select) select.value = value
+    const url = new URL(window.location.href)
+    url.searchParams.set('framework', value)
+    history.replaceState(null, '', url.toString())
+  }
+
+  function init() {
+    const fromUrl = new URLSearchParams(window.location.search).get('framework')
+    const fromStorage = localStorage.getItem('holey-framework')
+    applyFramework(fromUrl ?? fromStorage ?? 'typescript')
+  }
+
+  // Attach change listener once — the sidebar persists across Starlight navigations
+  document.getElementById('framework-select')?.addEventListener('change', (e) => {
+    applyFramework((e.target as HTMLSelectElement).value)
+  })
+
+  // Call directly for initial load (astro:page-load may fire before this module runs)
+  // and via event for subsequent client-side navigations
+  init()
+  document.addEventListener('astro:page-load', init)
+</script>
+
+<style>
+  .framework-select-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--sl-color-hairline-light);
+    margin-bottom: 0.5rem;
+  }
+  .framework-select-label {
+    font-size: var(--sl-text-xs);
+    color: var(--sl-color-gray-3);
+    white-space: nowrap;
+  }
+  .framework-select {
+    flex: 1;
+    background: var(--sl-color-black);
+    color: var(--sl-color-white);
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    font-size: var(--sl-text-sm);
+    cursor: pointer;
+  }
+</style>

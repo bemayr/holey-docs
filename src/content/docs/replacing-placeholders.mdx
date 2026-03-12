@@ -1,0 +1,145 @@
+---
+title: Replacing Placeholders
+description: Learn how Holey replaces throw new Error(), NotImplementedException, and TODO comments.
+---
+
+import ScrollyCoding from '../../components/ScrollyCoding.astro'
+import SlotByFramework from '../../components/SlotByFramework.astro'
+
+<SlotByFramework>
+  <Fragment slot="typescript">
+    ## Replacing `throw new Error()`
+
+    When a function isn't implemented yet, a common pattern is to throw an error as a placeholder.
+    `hole()` makes this intent explicit and trackable.
+  </Fragment>
+  <Fragment slot="csharp">
+    ## Replacing `NotImplementedException`
+
+    When a method isn't implemented yet, a common pattern is to throw an exception as a placeholder.
+    `Hole.Todo()` makes this intent explicit and trackable.
+  </Fragment>
+</SlotByFramework>
+
+<SlotByFramework>
+  <Fragment slot="typescript">
+    <ScrollyCoding steps={[
+      {
+        description: `<p>A common placeholder: <code>throw new Error()</code> marks an unimplemented function.</p><p>This will crash at runtime if called — but the intent to implement it later is implicit.</p>`,
+        code: `export function deleteUser(_id: string): Promise<void> {
+\tthrow new Error("delete user");
+}`,
+        diagnostics: [
+          { line: 2, severity: 'error', message: 'Crashes at runtime — intent is implicit' },
+        ],
+      },
+      {
+        description: `<p>Replace <code>throw new Error()</code> with <code>hole()</code>.</p><p>The gap is now explicit, named, and trackable — same runtime behavior, clearer intent.</p>`,
+        code: `export function deleteUser(_id: string): Promise<void> {
+\thole("delete user")
+}`,
+      },
+    ]} />
+  </Fragment>
+  <Fragment slot="csharp">
+    <ScrollyCoding steps={[
+      {
+        description: `<p>A common placeholder: <code>throw new NotImplementedException()</code> marks an unimplemented method.</p><p>IDEs may show it in the TODO window, but it doesn't surface at compile time.</p>`,
+        code: `public Task DeleteUser(string id)
+{
+\tthrow new NotImplementedException("delete user");
+}`,
+        diagnostics: [
+          { line: 3, severity: 'warning', message: 'Crashes at runtime — not visible at compile time' },
+        ],
+      },
+      {
+        description: `<p>Replace <code>throw new NotImplementedException()</code> with <code>Hole.Todo()</code>.</p><p>Holey's Roslyn analyzer now reports this as a compiler warning — the gap is visible in your Error List.</p>`,
+        code: `public Task DeleteUser(string id)
+{
+\treturn Hole.Todo("delete user");
+}`,
+        diagnostics: [
+          { line: 3, severity: 'warning', message: 'HLY102 ⚠ delete user' },
+        ],
+      },
+    ]} />
+  </Fragment>
+</SlotByFramework>
+
+## Replacing `// TODO` comments
+
+<SlotByFramework>
+  <Fragment slot="typescript">
+    TODO comments inside function bodies are easy to forget and hard to track.
+    `hole()` turns them into a first-class concept.
+  </Fragment>
+  <Fragment slot="csharp">
+    TODO comments inside method bodies are easy to forget and hard to track.
+    Holey turns them into a first-class concept.
+  </Fragment>
+</SlotByFramework>
+
+<SlotByFramework>
+  <Fragment slot="typescript">
+    <ScrollyCoding steps={[
+      {
+        description: `<p>A <code>// TODO</code> comment marks missing logic inside a function.</p><p>The function silently returns an empty array — the placeholder is invisible at runtime.</p>`,
+        code: `export function listUsers(): Promise<User[]> {
+\t// TODO: list users from database
+\treturn Promise.resolve([]);
+}`,
+      },
+      {
+        description: `<p>Replace the <code>// TODO</code> comment with <code>hole()</code>.</p><p>The gap is now explicit. The <code>return</code> stays — <code>hole()</code> only marks what's missing, not what's there.</p>`,
+        code: `export function listUsers(): Promise<User[]> {
+\thole("list users from database")
+\treturn Promise.resolve([]);
+}`,
+      },
+    ]} />
+  </Fragment>
+  <Fragment slot="csharp">
+    <ScrollyCoding steps={[
+      {
+        description: `<p>A <code>// TODO</code> comment marks missing logic inside a method.</p><p>The method silently returns an empty list — easy to overlook during review.</p>`,
+        code: `public Task<List<User>> ListUsers()
+{
+\t// TODO: list users from database
+\treturn Task.FromResult(new List<User>());
+}`,
+        diagnostics: [
+          { line: 3, severity: 'warning', message: 'HLY101 ⚠ TODO comment should be addressed' },
+        ],
+      },
+      {
+        description: `<p>Holey reports the plain <code>// TODO</code> as a warning. You can also add a tag to categorize it as a hole comment.</p><p>The <code>[Database]</code> tag turns it into a tracked hole comment, reported at information severity.</p>`,
+        code: `public Task<List<User>> ListUsers()
+{
+\t// TODO [Database]: list users from database
+\treturn Task.FromResult(new List<User>());
+}`,
+        diagnostics: [
+          { line: 3, severity: 'info', message: 'HLY201 ℹ [Database] list users from database' },
+        ],
+      },
+    ]} />
+  </Fragment>
+</SlotByFramework>
+
+<SlotByFramework>
+  <Fragment slot="typescript">
+  </Fragment>
+  <Fragment slot="csharp">
+    ## Hole types in C#
+
+    Holey for C# recognizes four distinct types of incomplete code, each with its own editor severity:
+
+    | Type | Syntax | Severity |
+    |---|---|---|
+    | **Todo Comment** | `// TODO: description` | Warning |
+    | **Hole Comment** | `// TODO [Tag]: description` | Information |
+    | **Missing Implementation** | `throw new NotImplementedException("description")` | Warning |
+    | **Side Effect** | `Hole.Todo("description", implementation?)` | Information |
+  </Fragment>
+</SlotByFramework>

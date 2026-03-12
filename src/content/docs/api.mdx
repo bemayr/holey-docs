@@ -1,0 +1,271 @@
+---
+title: API Reference
+description: Complete reference for hole() and Hole.Todo().
+---
+
+import SlotByFramework from '../../components/SlotByFramework.astro'
+
+## Installation
+
+<SlotByFramework>
+  <Fragment slot="typescript">
+    ```sh
+    npm install holey
+    ```
+  </Fragment>
+  <Fragment slot="csharp">
+    ```sh
+    dotnet add package Holey
+    ```
+  </Fragment>
+</SlotByFramework>
+
+<SlotByFramework>
+  <Fragment slot="typescript">
+    ## `hole()`
+  </Fragment>
+  <Fragment slot="csharp">
+    ## `Hole.Todo()`
+  </Fragment>
+</SlotByFramework>
+
+Marks an incomplete part of the program with a description. Optionally accepts a temporary implementation to keep the program running.
+
+### Parameters
+
+<SlotByFramework>
+  <Fragment slot="typescript">
+    | Parameter | Type | Description |
+    |---|---|---|
+    | `description` | `string` | What this hole represents or what needs to be done here |
+    | `implementation` | `T \| (() => T) \| Promise<T> \| (() => Promise<T>)` | Optional temporary stand-in |
+
+    If no `implementation` is provided, the return type is `never` — compatible with any position in your code.
+  </Fragment>
+  <Fragment slot="csharp">
+    | Parameter | Type | Description |
+    |---|---|---|
+    | `description` | `string` | What this hole represents or what needs to be done here |
+    | `implementation` | `TValue`, `Func<TValue>`, `Task<TValue>`, or `Func<Task<TValue>>` | Optional temporary stand-in |
+
+    C# exposes multiple overloads rather than a single generic signature:
+
+    ```csharp
+    Hole.Todo(string description)
+    TValue       Hole.Todo<TValue>(string description, TValue value)
+    TValue       Hole.Todo<TValue>(string description, Func<TValue> factory)
+    Task<TValue> Hole.Todo<TValue>(string description, Task<TValue> task)
+    Task<TValue> Hole.Todo<TValue>(string description, Func<Task<TValue>> factory)
+    Task         Hole.Todo(string description, Task task)
+    ```
+  </Fragment>
+</SlotByFramework>
+
+### Marking an unimplemented function
+
+<SlotByFramework>
+  <Fragment slot="typescript">
+    ```ts
+    function deleteAccount(userId: string): Promise<void> {
+      return hole("delete account and all associated data")
+    }
+    ```
+    Calling this throws `HoleNotImplementedError: delete account and all associated data`.
+  </Fragment>
+  <Fragment slot="csharp">
+    ```csharp
+    public Task DeleteAccount(string userId)
+    {
+        return Hole.Todo("delete account and all associated data");
+    }
+    ```
+    Calling this throws `HoleNotImplementedException: delete account and all associated data`.
+  </Fragment>
+</SlotByFramework>
+
+### Providing a constant fallback
+
+<SlotByFramework>
+  <Fragment slot="typescript">
+    ```ts
+    const config = hole("load config from remote", { timeout: 5000, retries: 3 })
+    ```
+  </Fragment>
+  <Fragment slot="csharp">
+    ```csharp
+    var config = Hole.Todo("load config from remote", new Config { Timeout = 5000, Retries = 3 });
+    ```
+  </Fragment>
+</SlotByFramework>
+
+### Providing a lazy fallback
+
+<SlotByFramework>
+  <Fragment slot="typescript">
+    ```ts
+    const apiKey = hole("read API_KEY from secrets manager", () => process.env.API_KEY ?? "")
+    ```
+  </Fragment>
+  <Fragment slot="csharp">
+    ```csharp
+    var apiKey = Hole.Todo(
+        "read API_KEY from secrets manager",
+        () => Environment.GetEnvironmentVariable("API_KEY")
+    );
+    ```
+  </Fragment>
+</SlotByFramework>
+
+### Async holes
+
+<SlotByFramework>
+  <Fragment slot="typescript">
+    ```ts
+    const user = await hole("fetch user from database", async () => {
+      return { id: "1", name: "Alice" }
+    })
+    ```
+  </Fragment>
+  <Fragment slot="csharp">
+    ```csharp
+    var user = await Hole.Todo(
+        "fetch user from database",
+        Task.FromResult(new User { Id = 1, Name = "Alice" })
+    );
+    ```
+  </Fragment>
+</SlotByFramework>
+
+### Nested holes
+
+<SlotByFramework>
+  <Fragment slot="typescript">
+    ```ts
+    const result = await hole(
+      "process payment",
+      hole("select payment provider", stripeProvider).charge(order)
+    )
+    ```
+  </Fragment>
+  <Fragment slot="csharp">
+    ```csharp
+    var result = await Hole.Todo(
+        "process payment",
+        Hole.Todo("select payment provider", stripeProvider).ChargeAsync(order)
+    );
+    ```
+  </Fragment>
+</SlotByFramework>
+
+---
+
+## Configuration
+
+<SlotByFramework>
+  <Fragment slot="typescript">
+    ```ts
+    import { configure } from 'holey'
+
+    configure({
+      onHole: (info) => {
+        console.warn(`[hole] ${info.description} (${info.file}:${info.line})`)
+      },
+      mode: 'warn', // 'warn' | 'throw' | 'silent'
+    })
+    ```
+
+    | Option | Type | Default | Description |
+    |---|---|---|---|
+    | `mode` | `'warn' \| 'throw' \| 'silent'` | `'warn'` | What happens when a hole without an implementation is reached |
+    | `onHole` | `(info: HoleInfo) => void` | `undefined` | Called every time any hole is evaluated |
+  </Fragment>
+  <Fragment slot="csharp">
+    ```csharp
+    Holes
+        .UseLoggerFactory(loggerFactory)
+        .UseReporting(reporter => reporter.OnHoleEncountered(info => Console.WriteLine(info)))
+        .UseExtensions(extensions => extensions.AddSidecar());
+    ```
+
+    | Method | Description |
+    |---|---|
+    | `.UseLoggerFactory(factory)` | Route Holey's internal logs through .NET's `ILoggerFactory` |
+    | `.UseReporting(configure)` | Register runtime reporters for hole events |
+    | `.UseExtensions(configure)` | Register extensions such as the Sidecar application |
+  </Fragment>
+</SlotByFramework>
+
+---
+
+## Hole metadata
+
+<SlotByFramework>
+  <Fragment slot="typescript">
+    | Field | Type | Description |
+    |---|---|---|
+    | `description` | `string` | The hole's description string |
+    | `file` | `string` | Source file path |
+    | `line` | `number` | Line number of the hole call |
+    | `hasImplementation` | `boolean` | Whether a temporary implementation was provided |
+  </Fragment>
+  <Fragment slot="csharp">
+    Holey for C# collects hole metadata at both compile time (via Roslyn analyzers and source generators) and runtime (via `CallerFilePath`, `CallerLineNumber`, and stack frames):
+
+    | Field | Source | Description |
+    |---|---|---|
+    | `Description` | Runtime | The hole's description string |
+    | `Location.FilePath` | Compile-time | Source file path |
+    | `Location.LineNumber` | Compile-time | Line number |
+    | `Location.ColumnNumber` | Runtime (stack frame, debug only) | Column number |
+    | `ExpressionLiteral` | Compile-time | Source text of the implementation expression |
+    | `ReturnType` | Compile-time | Type of the value the hole returns |
+  </Fragment>
+</SlotByFramework>
+
+---
+
+## Errors
+
+<SlotByFramework>
+  <Fragment slot="typescript">
+    `HoleNotImplementedError` is thrown when a hole without an implementation is reached at runtime:
+
+    ```
+    HoleNotImplementedError: delete account and all associated data
+      at hole (holey/index.js:12:11)
+      at deleteAccount (src/users.ts:42:10)
+    ```
+  </Fragment>
+  <Fragment slot="csharp">
+    `HoleNotImplementedException` is thrown when an empty `Hole.Todo()` is reached at runtime:
+
+    ```
+    Holey.HoleNotImplementedException: delete account and all associated data
+       at Holey.Hole.Todo(String description) in Hole.cs:line 18
+       at UserService.DeleteAccount(String userId) in UserService.cs:line 42
+    ```
+
+    For `NotImplementedException` (the built-in C# type), Holey's Roslyn analyzer reports it as a compile-time warning so it surfaces before you hit runtime.
+  </Fragment>
+</SlotByFramework>
+
+---
+
+<SlotByFramework>
+  <Fragment slot="typescript">
+  </Fragment>
+  <Fragment slot="csharp">
+    ## Compile-time diagnostics
+
+    Holey's Roslyn analyzers surface all hole types in the IDE Error List:
+
+    | Hole type | Syntax | Code | Debug severity | Release severity |
+    |---|---|---|---|---|
+    | Todo Comment | `// TODO: …` | `HLY101` | Warning | Error |
+    | Hole Comment | `// TODO [Tag]: …` | `HLY201` | Information | Warning |
+    | Missing Implementation | `throw new NotImplementedException(…)` | `HLY102` | Warning | Error |
+    | Side Effect | `Hole.Todo(…)` | `HLY301` | Information | Warning |
+
+    Add `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` to your release build configuration to prevent any holes from shipping to production.
+  </Fragment>
+</SlotByFramework>

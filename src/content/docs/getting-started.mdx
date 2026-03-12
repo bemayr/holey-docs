@@ -1,0 +1,133 @@
+---
+title: Getting Started
+description: Add Holey to your project and start writing incomplete, executable code.
+---
+
+import { Steps } from '@astrojs/starlight/components';
+import SlotByFramework from '../../components/SlotByFramework.astro';
+
+## Installation
+
+<SlotByFramework>
+  <Fragment slot="typescript">
+    <Steps>
+
+    1. Install the `holey` package:
+
+       ```sh
+       npm install holey
+       ```
+
+    2. Import `hole` wherever you need it:
+
+       ```ts
+       import { hole } from 'holey';
+       ```
+
+    3. Replace placeholders with `hole()`:
+
+       ```ts
+       export async function createUser(data: UserInput): Promise<User> {
+         hole("validate input before saving")
+         return hole("save user to database", { id: "1", ...data })
+       }
+       ```
+
+    </Steps>
+  </Fragment>
+  <Fragment slot="csharp">
+    <Steps>
+
+    1. Install the `Holey` NuGet package:
+
+       ```sh
+       dotnet add package Holey
+       ```
+
+    2. Add a global using (C# 10+) or import per file:
+
+       ```csharp
+       // In GlobalUsings.cs
+       global using Holey;
+       ```
+
+    3. Replace placeholders with `Hole.Todo()`:
+
+       ```csharp
+       public async Task<User> CreateUser(UserInput data)
+       {
+           Hole.Todo("validate input before saving");
+           return Hole.Todo("save user to database", new User { Id = 1, Name = data.Name });
+       }
+       ```
+
+    </Steps>
+  </Fragment>
+</SlotByFramework>
+
+## Your first hole
+
+The simplest use of a hole is as a named placeholder — a `// TODO` comment that actually *does something*:
+
+<SlotByFramework>
+  <Fragment slot="typescript">
+    ```ts
+    function sendWelcomeEmail(user: User): void {
+      hole("send welcome email via SendGrid")
+    }
+    ```
+  </Fragment>
+  <Fragment slot="csharp">
+    ```csharp
+    public void SendWelcomeEmail(User user)
+    {
+        Hole.Todo("send welcome email via SendGrid");
+    }
+    ```
+  </Fragment>
+</SlotByFramework>
+
+Unlike a comment, this hole:
+
+- Shows up as a **diagnostic** in your editor
+- Gets reported **at runtime** when the function is called
+- Can be given a **temporary implementation** to keep your app running
+
+## Providing a temporary implementation
+
+Pass a second argument to give the hole a stand-in value or behavior while the real implementation is pending:
+
+<SlotByFramework>
+  <Fragment slot="typescript">
+    ```ts
+    // Return a hardcoded value for now
+    const apiKey = hole("read API_KEY from secrets manager", "dev-key-123")
+
+    // Use an environment variable as a stopgap
+    const port = hole("read port from config service", () => parseInt(process.env.PORT ?? "3000"))
+
+    // Simulate an async operation
+    await hole("persist session to Redis", Promise.resolve())
+    ```
+  </Fragment>
+  <Fragment slot="csharp">
+    ```csharp
+    // Return a hardcoded value for now
+    var apiKey = Hole.Todo("read API_KEY from secrets manager", "dev-key-123");
+
+    // Use an environment variable as a stopgap
+    var port = Hole.Todo("read port from config service", () => int.Parse(Environment.GetEnvironmentVariable("PORT") ?? "3000"));
+
+    // Simulate an async operation
+    await Hole.Todo("persist session to Redis", Task.Delay(0));
+    ```
+  </Fragment>
+</SlotByFramework>
+
+The temporary implementation is clearly separated from its description, so it's obvious what's real and what's a stand-in.
+
+## Next steps
+
+- Learn about [replacing existing placeholders](/replacing-placeholders/) like `throw new Error()` and `// TODO` comments
+- Understand [Hole-Driven Development](/concepts/hole-driven-development/) and why it helps
+- See the full [API reference](/api/)

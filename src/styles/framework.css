@@ -1,0 +1,15 @@
+/* Hide all framework-specific content by default */
+[data-slot-by-framework] [data-fw] {
+  display: none;
+}
+
+/* Show the active framework */
+html[data-framework="typescript"] [data-slot-by-framework] [data-fw="typescript"],
+html[data-framework="csharp"] [data-slot-by-framework] [data-fw="csharp"] {
+  display: block;
+}
+
+/* Fallback: show TypeScript if no framework is set */
+html:not([data-framework]) [data-slot-by-framework] [data-fw="typescript"] {
+  display: block;
+}

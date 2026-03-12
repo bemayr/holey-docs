@@ -1,0 +1,83 @@
+---
+title: What is Hole-Driven Development?
+description: The ideas behind Hole-Driven Development and why it makes programming easier.
+---
+
+## The core idea
+
+Programming is not just text production — it's a **conversation**: with your future self, with your teammates, and with the compiler. Hole-Driven Development (HDD) takes this seriously by treating *incompleteness* as a first-class concept.
+
+A **hole** is a named, executable placeholder for code that isn't written yet. Rather than forcing you to either finish every detail before you can run your program, or leave silent `// TODO` comments that disappear from view, holes let you:
+
+- Write the structure of your code top-down, filling in details as you go
+- Keep programs **executable** throughout development
+- Stay in focus — holes act as a checklist that's always in front of you
+
+## Where the idea comes from
+
+HDD originates from **dependently-typed functional languages** like Idris, Agda, and Haskell, where the compiler is smart enough to participate in the process of writing code. When you leave a hole, the compiler tells you what type is expected there and what values are in scope — essentially guiding you toward a correct implementation.
+
+```haskell
+-- The compiler tells you: hole `_` has type `f (Free f b)`
+Free f >>= g = Free _
+```
+
+This "compiler as lab assistant" model dramatically reduces the cognitive load of programming by letting you solve one problem at a time.
+
+## Reducing cognitive load
+
+Programming is a form of [complex problem-solving](https://en.wikipedia.org/wiki/Complex_problem_solving). Complex problems have many interdependent variables, unclear goals, and require switching between **top-down** exploration (what do I need?) and **bottom-up** composition (what do I have?).
+
+Holes make this switching explicit. When you encounter a sub-problem you're not ready to solve, you leave a hole and continue. The hole marks your place, holds your intent, and keeps the surrounding code working.
+
+Without holes, developers often reach for workarounds that obscure intent:
+
+| Pattern | Problem |
+|---|---|
+| `// TODO: implement this` | Silent — invisible at runtime, easy to forget |
+| `throw new Error("not implemented")` | Crashes unexpectedly — intent is implicit |
+| `return null` / `return []` | Silent wrong values — bugs hide until much later |
+| Stubbing everything out first | Forces bottom-up thinking even when top-down fits better |
+
+Holes replace all of these with a single, honest concept.
+
+## Tighter feedback loops
+
+Agile software development is built on the principle of **shortening feedback loops** — delivering working software frequently so you can learn and adapt. Holes support this by letting you run your software at any stage of completion.
+
+Instead of:
+> "I can't test the payment flow until the email service is integrated"
+
+You write:
+> ```ts
+> await hole("send confirmation email", simulateEmailSend(order))
+> processPayment(order)
+> ```
+
+The app runs. The payment flow is testable. The email hole is tracked and visible.
+
+## The 13 properties of holes
+
+Through analysis of todo comments, functional languages, and creative simulations across many languages, the following properties were identified as the core of what makes holes useful. Holey is built around all 13:
+
+| # | Property |
+|---|---|
+| HP1 | **Concise** — notation is as brief as possible |
+| HP2 | **Idiomatic** — uses native language features; low learning curve |
+| HP3 | **Executable** — programs containing holes can still run |
+| HP4 | **Descriptive** — holes carry a textual note about their intent |
+| HP5 | **Taggable** — custom tags enable categorization and search |
+| HP6 | **Editor-independent** — works across IDEs and tools |
+| HP7 | **Configurable behavior** — runtime behavior can be specified |
+| HP8 | **Visible** — holes surface as compiler/linter messages |
+| HP9 | **Mode-aware** — severity changes between dev and release builds |
+| HP10 | **Editor actions** — IDE commands for converting holes |
+| HP11 | **Type-guided** — type information helps guide implementation |
+| HP12 | **Visual editing** — some holes support interactive, graphical input |
+| HP13 | **Nestable** — holes can appear inside other holes |
+
+## Further reading
+
+- Mayr, B. (2023). *Towards Hole-Driven Development in General Purpose Programming Languages: A Proof of Concept in C#.* Master's Thesis, FH Hagenberg.
+- Brady, E. (2017). *Type-Driven Development with Idris.* Manning Publications.
+- Omar, C. et al. *Hazel: A Live Functional Programming Environment Featuring Typed Holes.*

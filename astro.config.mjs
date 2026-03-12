@@ -6,22 +6,29 @@ import starlight from '@astrojs/starlight';
 export default defineConfig({
 	integrations: [
 		starlight({
-			title: 'My Docs',
+			title: 'Holey',
 			social: [
 				{ icon: 'github', label: 'GitHub', href: 'https://github.com/withastro/starlight' },
 			],
-			sidebar: [
+			components: {
+				Sidebar: './src/components/CustomSidebar.astro',
+			},
+			customCss: ['./src/styles/framework.css'],
+			head: [
 				{
-					label: 'Guides',
-					items: [
-						// Each item here is one entry in the navigation menu.
-						{ label: 'Example Guide', slug: 'guides/example' },
-						{ label: 'Replacing Placeholders with hole()', slug: 'guides/holes' },
-					],
+					tag: 'script',
+					content: `try{var f=new URLSearchParams(location.search).get('framework')||localStorage.getItem('holey-framework')||'typescript';document.documentElement.dataset.framework=f}catch(e){}`,
 				},
+			],
+			sidebar: [
+				{ label: 'Getting Started', slug: 'getting-started' },
+				{ label: 'Replacing Placeholders', slug: 'replacing-placeholders' },
+				{ label: 'API Reference', slug: 'api' },
 				{
-					label: 'Reference',
-					autogenerate: { directory: 'reference' },
+					label: 'Concepts',
+					items: [
+						{ label: 'Hole-Driven Development', slug: 'concepts/hole-driven-development' },
+					],
 				},
 			],
 		}),
