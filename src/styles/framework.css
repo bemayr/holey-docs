@@ -9,7 +9,3 @@ html[data-framework="csharp"] [data-slot-by-framework] [data-fw="csharp"] {
   display: block;
 }
 
-/* Fallback: show TypeScript if no framework is set */
-html:not([data-framework]) [data-slot-by-framework] [data-fw="typescript"] {
-  display: block;
-}

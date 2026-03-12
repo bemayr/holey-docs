@@ -17,7 +17,7 @@ export default defineConfig({
 			head: [
 				{
 					tag: 'script',
-					content: `try{var f=new URLSearchParams(location.search).get('framework')||localStorage.getItem('holey-framework')||'typescript';document.documentElement.dataset.framework=f}catch(e){}`,
+					content: `try{var f=new URLSearchParams(location.search).get('framework')||localStorage.getItem('holey-framework');if(f)document.documentElement.dataset.framework=f}catch(e){}`,
 				},
 			],
 			sidebar: [

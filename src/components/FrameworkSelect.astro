@@ -27,7 +27,8 @@ const frameworks = [
   function init() {
     const fromUrl = new URLSearchParams(window.location.search).get('framework')
     const fromStorage = localStorage.getItem('holey-framework')
-    applyFramework(fromUrl ?? fromStorage ?? 'typescript')
+    const value = fromUrl ?? fromStorage
+    if (value) applyFramework(value)
   }
 
   // Attach change listener once — the sidebar persists across Starlight navigations

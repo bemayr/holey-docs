@@ -1,0 +1,83 @@
+---
+const frameworks = [
+  { id: 'typescript', label: 'TypeScript', detail: 'npm package · holey' },
+  { id: 'csharp', label: 'C# / .NET', detail: 'NuGet package · Holey' },
+]
+---
+
+<div class="language-picker">
+  <p class="language-picker-prompt">Choose your language to get started:</p>
+  <div class="language-picker-cards">
+    {frameworks.map(fw => (
+      <button class="language-card" data-framework-choice={fw.id}>
+        <strong>{fw.label}</strong>
+        <span>{fw.detail}</span>
+      </button>
+    ))}
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-framework-choice]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const value = btn.dataset.frameworkChoice!
+      document.documentElement.dataset.framework = value
+      localStorage.setItem('holey-framework', value)
+      const url = new URL(window.location.href)
+      url.searchParams.set('framework', value)
+      history.replaceState(null, '', url.toString())
+      const select = document.getElementById('framework-select') as HTMLSelectElement | null
+      if (select) select.value = value
+    })
+  })
+</script>
+
+<style>
+  .language-picker {
+    margin: 1.5rem 0;
+  }
+
+  .language-picker-prompt {
+    margin-bottom: 0.75rem;
+    color: var(--sl-color-gray-2);
+  }
+
+  .language-picker-cards {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .language-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 1rem 1.5rem;
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 0.5rem;
+    background: var(--sl-color-black);
+    color: var(--sl-color-white);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.15s, background 0.15s;
+  }
+
+  .language-card:hover {
+    border-color: var(--sl-color-accent);
+    background: var(--sl-color-bg-nav);
+  }
+
+  .language-card strong {
+    font-size: var(--sl-text-lg);
+  }
+
+  .language-card span {
+    font-size: var(--sl-text-xs);
+    color: var(--sl-color-gray-3);
+  }
+
+  /* Hide the picker once a framework is chosen */
+  html[data-framework] .language-picker {
+    display: none;
+  }
+</style>
