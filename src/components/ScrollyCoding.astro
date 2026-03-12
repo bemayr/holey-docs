@@ -48,6 +48,7 @@ const uid = `sc-${Math.random().toString(36).slice(2, 9)}`
                     {SEVERITY_ICON[d.severity]}
                   </span>
                   <span class="sc-diag-text">{d.message}</span>
+                  <span class="sc-diag-line">Ln {d.line}</span>
                 </div>
               ))}
             </div>
@@ -172,6 +173,9 @@ const uid = `sc-${Math.random().toString(36).slice(2, 9)}`
     transition: opacity 0.2s ease;
     pointer-events: none;
     min-width: 0;
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 0.5rem;
+    overflow: hidden;
   }
 
   .sc-code.active {
@@ -179,14 +183,9 @@ const uid = `sc-${Math.random().toString(36).slice(2, 9)}`
     pointer-events: auto;
   }
 
-  /* Square off the bottom corners when a diagnostic panel follows */
-  .sc-code :global(pre:has(+ .sc-diag-panel)) {
-    border-radius: 0.5rem 0.5rem 0 0;
-  }
-
   .sc-code :global(pre) {
-    border-radius: 0.5rem;
-    padding: 1rem 1.5rem;
+    border-radius: 0;
+    padding: 1.25rem 1.75rem;
     margin: 0;
     overflow-x: auto;
   }
@@ -221,9 +220,9 @@ const uid = `sc-${Math.random().toString(36).slice(2, 9)}`
   /* Changed lines */
   .sc-code :global(.sc-changed) {
     background-color: color-mix(in srgb, var(--sl-color-accent) 12%, transparent);
-    margin-inline: -1.5rem;
-    padding-inline-start: calc(1.5rem - 3px);
-    padding-inline-end: 1.5rem;
+    margin-inline: -1.75rem;
+    padding-inline-start: calc(1.75rem - 3px);
+    padding-inline-end: 1.75rem;
     border-inline-start: 3px solid var(--sl-color-accent);
   }
 
@@ -237,9 +236,9 @@ const uid = `sc-${Math.random().toString(36).slice(2, 9)}`
   .sc-code :global(.sc-diag-warning),
   .sc-code :global(.sc-diag-info) {
     background-color: color-mix(in srgb, var(--sc-diag-color) 8%, transparent);
-    margin-inline: -1.5rem;
-    padding-inline-start: calc(1.5rem - 3px);
-    padding-inline-end: 1.5rem;
+    margin-inline: -1.75rem;
+    padding-inline-start: calc(1.75rem - 3px);
+    padding-inline-end: 1.75rem;
     border-inline-start: 3px solid var(--sc-diag-color);
   }
 
@@ -258,10 +257,7 @@ const uid = `sc-${Math.random().toString(36).slice(2, 9)}`
 
   /* ── Diagnostic panel ── */
   .sc-code :global(.sc-diag-panel) {
-    border: 1px solid var(--sl-color-gray-5);
-    border-top: none;
-    border-radius: 0 0 0.5rem 0.5rem;
-    overflow: hidden;
+    border-top: 1px solid var(--sl-color-hairline);
   }
 
   .sc-code :global(.sc-diag-item) {
@@ -284,6 +280,15 @@ const uid = `sc-${Math.random().toString(36).slice(2, 9)}`
   }
 
   .sc-code :global(.sc-diag-text) {
+    flex: 1;
     color: var(--sl-color-text);
+  }
+
+  .sc-code :global(.sc-diag-line) {
+    flex-shrink: 0;
+    font-family: var(--sl-font-mono, monospace);
+    font-size: 0.75em;
+    color: var(--sc-diag-color);
+    opacity: 0.75;
   }
 </style>
